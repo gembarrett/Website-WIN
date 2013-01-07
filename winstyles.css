@@ -1,0 +1,53 @@
+@charset "UTF-8";
+/* CSS Document */
+
+body {
+	background-image: url(../images/bg.jpg);
+	background-repeat: repeat;
+	font-family:Arial, Helvetica, sans-serif;
+}
+
+#main_content {
+	width: 960px;
+	height:auto;
+	margin: 0 auto;
+	background-color:rgb(255,255,255); /* The fallback colour */
+	background-color:rgba(255,255,255,0.5);
+}
+
+#header {
+	width:auto;
+	height:auto;
+	margin: 0 auto;
+}
+
+#link_container {
+	width: auto;
+	height:auto;
+	margin: 0 auto;
+	background-repeat:no-repeat;
+}
+
+link_container p {
+	font-family:Arial, Helvetica, sans-serif;
+	font-size:medium;
+	font-weight:bold;
+}
+
+#footer {
+	width: auto;
+	height: auto;
+	margin: 0 auto;
+}
+
+
+.quotes {
+	font-style:italic;
+}
+
+#content {
+	padding-left: 15px;
+	padding-right: 15px;
+	line-height: 1.5em;
+}
+	

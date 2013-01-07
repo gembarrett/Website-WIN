@@ -1,0 +1,203 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><!-- InstanceBegin template="/Templates/win.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Untitled Document</title>
+<!-- InstanceEndEditable -->
+<!-- InstanceBeginEditable name="head" -->
+<script type="text/javascript">
+<!--
+/**
+ * Converts an xs:date or xs:dateTime formatted string into the local timezone
+ * and outputs a human-readable form of this date or date/time.
+ *
+ * @param {string} gCalTime is the xs:date or xs:dateTime formatted string
+ * @return {string} is the human-readable date or date/time string
+ */
+function formatGCalTime(gCalTime) { 
+  // text for regex matches
+  var remtxt = gCalTime;
+
+  function consume(retxt) {
+    var match = remtxt.match(new RegExp('^' + retxt));
+    if (match) {
+      remtxt = remtxt.substring(match[0].length);
+      return match[0];
+    }
+    return '';
+  }
+
+  // minutes of correction between gCalTime and GMT
+  var totalCorrMins = 0;
+
+  var year = consume('\\d{4}');
+  consume('-?');
+  var month = consume('\\d{2}');
+  consume('-?');
+  var dateMonth = consume('\\d{2}');
+  var timeOrNot = consume('T');
+
+  // if a DATE-TIME was matched in the regex 
+  if (timeOrNot == 'T') {
+    var hours = consume('\\d{2}');
+    consume(':?');
+    var mins = consume('\\d{2}');
+    consume('(:\\d{2})?(\\.\\d{3})?');
+    var zuluOrNot = consume('Z');
+
+    // if time from server is not already in GMT, calculate offset
+    if (zuluOrNot != 'Z') {
+      var corrPlusMinus = consume('[\\+\\-]');
+      if (corrPlusMinus != '') {
+        var corrHours = consume('\\d{2}');
+        consume(':?');
+        var corrMins = consume('\\d{2}');
+        totalCorrMins = (corrPlusMinus=='-' ? 1 : -1) * 
+            (Number(corrHours) * 60 + 
+	    (corrMins=='' ? 0 : Number(corrMins)));
+      }
+    } 
+
+    // get time since epoch and apply correction, if necessary
+    // relies upon Date object to convert the GMT time to the local
+    // timezone
+    var originalDateEpoch = Date.UTC(year, month - 1, dateMonth, hours, mins);
+    var gmtDateEpoch = originalDateEpoch + totalCorrMins * 1000 * 60;
+    var ld = new Date(gmtDateEpoch);
+
+    // date is originally in YYYY-MM-DD format
+    // time is originally in a 24-hour format
+    // this converts it to MM/DD hh:mm (AM|PM) 
+    dateString = ld.getDate() + '/' + (ld.getMonth() + 1) + ' ' + 
+        ((ld.getHours()>12)?(ld.getHours()-12):(ld.getHours()===0?12:
+	ld.getHours())) + ':' + ((ld.getMinutes()<10)?('0' + 
+	ld.getMinutes()):(ld.getMinutes())) + ' ' + 
+	((ld.getHours()>=12)?'PM':'AM');
+  } else {
+    // if only a DATE was matched
+    dateString =  parseInt(dateMonth) + '/' + parseInt(month);
+  }
+  return dateString;
+}
+
+/**
+ * Creates an unordered list of events in a human-readable form
+ *
+ * @param {json} root is the root JSON-formatted content from GData
+ * @param {string} divId is the div in which the events are added
+ */ 
+function listEvents(root, divId) {
+  var feed = root.feed;
+  var events = document.getElementById(divId);
+
+  if (events.childNodes.length > 0) {
+    events.removeChild(events.childNodes[0]);
+  }	  
+
+  // create a new unordered list
+  var ul = document.createElement('ul');
+
+  // loop through each event in the feed
+  for (var i = 0; i < feed.entry.length; i++) {
+    var entry = feed.entry[i];
+    var title = entry.title.$t;
+    var start = entry['gd$when'][0].startTime;
+
+    // get the URL to link to the event
+    for (var linki = 0; linki < entry['link'].length; linki++) {
+      if (entry['link'][linki]['type'] == 'text/html' &&
+          entry['link'][linki]['rel'] == 'alternate') {
+        var entryLinkHref = entry['link'][linki]['href'];
+      }
+    }
+
+    var dateString = formatGCalTime(start);
+    var li = document.createElement('li');
+
+    // if we have a link to the event, create an 'a' element
+    if (typeof entryLinkHref != 'undefined') {
+      entryLink = document.createElement('a');
+      entryLink.setAttribute('href', entryLinkHref);
+      entryLink.appendChild(document.createTextNode(title));
+      li.appendChild(entryLink);
+      li.appendChild(document.createTextNode(' - ' + dateString));
+    } else {
+      li.appendChild(document.createTextNode(title + ' - ' + dateString));
+    }	    
+
+    // append the list item onto the unordered list
+    ul.appendChild(li);
+  }
+  events.appendChild(ul);
+}
+
+/**
+ * Callback function for the GData json-in-script call
+ * Inserts the supplied list of events into a div of a pre-defined name
+ * 
+ * @param {json} root is the JSON-formatted content from GData
+ */ 
+function insertAgenda(root) {
+  listEvents(root, 'agenda');
+}
+//-->
+</script>
+<!-- InstanceEndEditable -->
+<link href="winstyles.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="links.js"></script>
+
+<style type="text/css">
+body {
+	background-image:url(images/bg.jpg);
+	background-repeat:repeat;
+}
+a:link {color:#6633CC; text-decoration:none;}      /* unvisited link */
+a:visited {color:#660066;text-decoration:none;}  /* visited link */
+a:hover {color:#660066; text-decoration:underline;}  /* mouse over link */
+a:active {color:#660066;text-decoration:none;}  /* selected link */
+</style>
+
+</head>
+
+<body onload="MM_preloadImages('images/Smembers.jpg','images/Sevents.jpg','images/Sblog.jpg','images/Sdocs.jpg','images/Scontact.jpg')">
+<div id="main_content">
+<div id="header"><img src="images/logo.png" height="150" width="960" />
+<div id="link_container"><!-- InstanceBeginEditable name="links" --><a href="index.html"><img src="images/Shome.jpg" alt="Home" name="home" width="140" height="49" border="0" id="home" /></a><a href="members.html" onmouseout="MM_swapImgRestore()" onmouseover="MM_swapImage('members','','images/Smembers.jpg',1)"><img src="images/USmembers.jpg" alt="Members" name="members" width="160" height="49" border="0" id="members" /></a><a href="events.html" onmouseout="MM_swapImgRestore()" onmouseover="MM_swapImage('events','','images/Sevents.jpg',1)"><img src="images/USevents.jpg" alt="Events" name="events" width="160" height="49" border="0" id="events" /></a><a href="http://www.blog.winiow.co.uk" onmouseout="MM_swapImgRestore()" onmouseover="MM_swapImage('blog','','images/Sblog.jpg',1)"><img src="images/USblog.jpg" alt="Blog" name="blog" width="140" height="49" border="0" id="blog" /></a><a href="documents.html" onmouseout="MM_swapImgRestore()" onmouseover="MM_swapImage('documents','','images/Sdocs.jpg',1)"><img src="images/USdocs.jpg" alt="Documents &amp; links" name="documents" width="200" height="49" border="0" id="documents" /></a><a href="contact.html" onmouseout="MM_swapImgRestore()" onmouseover="MM_swapImage('contact','','images/Scontact.jpg',1)"><img src="images/UScontact.jpg" alt="Contact" name="contact" width="160" height="49" border="0" id="contact" /></a><!-- InstanceEndEditable --></div>
+</div>
+<!-- InstanceBeginEditable name="content" -->
+<div id="content">
+<h3 align="center">What is WIN?</h3>
+<h4 align="center"><span class="quotes">"A networking group for Island Business Women, whose purpose is to connect and to share wisdom and practical solutions through weekly meetings, in a relaxed, professional and co-operative environment."</span></h4>
+<p>Upcoming Women's Island Network Events</p>
+
+<div id="agenda"><p>Loading...</p></div>
+
+<script type="text/javascript" src="//www.google.com/calendar/feeds/winiow2010@gmail.com/public/full?alt=json-in-script&callback=insertAgenda&orderby=starttime&max-results=3&singleevents=true&sortorder=ascending&futureevents=true"></script>
+<p>The Women's Island Network is a unique networking group, exclusively for businesswomen on the Isle of Wight. Our  weekly meetings every Tuesday (during termtime) between 12-1pm at the Wheatsheaf in Newport bring a variety of benefits to members of our networking group:<ul>
+<li>Ability to grow your business through networking</li>
+<li>Provides the opportunity of meeting like-minded businesswomen</li>
+<li>Forging mutually beneficial business relationships.</li>
+<li>Raising the profile of your business across the Isle of Wight</li>
+<li>Opportunity to share ideas</li>
+<li>Promote personal & professional growth.</li>
+<li>Scheduled motivational speakers</li>
+<li>Strong support group</li></ul></p>
+
+<p><strong>Below are some comments from members of WIN:</strong><br />
+WIN Chair, Jacquie Tarry:<br />
+<span class="quotes">“Networking has proved highly beneficial to my business, but often when talking to other businesswomen they are unable to make more traditional breakfast meetings due largely to family commitments. WIN offers an opportunity to meet like-minded professional ladies at a more convenient timeslot. All businesswomen are welcome whether they’re a new start-up or have been established for many years”</span></p>
+
+<p>Lois Prior from the Big Green Island Project<br />
+<span class="quotes">“WIN is not just about networking, for me it's also an oasis of support and ideas, vital for someone who works on their own from home. The lovely ladies from WIN are all businesswomen who understand the trials and triumphs of being your own boss. You will always learn something new every week, especially from the guest speakers, a good foundation as to develop your business you first need to develop yourself.”</span></p>
+
+<p><strong>Interested in joining WIN?</strong><br />
+If you are interested in joining or finding out more about Women's Island Network, please feel free to <a href="contact.html">contact us</a> or pop along to one of our weekly meetings at the Wheatsheaf.</p>
+</div>
+<!-- InstanceEndEditable -->
+
+<div id="footer"><hr /><h5 align="center"><small><a href="index.html">HOME</a>   -   <a href="members.html">MEMBERS</a>   -   <a href="events.html">EVENTS</a>   -   <a href="http://www.blog.winiow.co.uk">BLOG</a>   -   <a href="documents.html">DOCUMENTS &amp; LINKS</a>   -   <a href="contact.html">CONTACT</a><br /><br /><a href="http://www.gemdesignsforyou.com" target="_blank">Design by Gem Designs</a></small></h5></div>
+</div>
+
+</body>
+<!-- InstanceEnd --></html>
